@@ -8,7 +8,7 @@ def get_rx_var_name(pkt_size, loss_rate):
     return 'baseline_FPS_RX_' + pkt_size + 'B_' + loss_rate
 
 def get_rx_var(var_name, uuid):
-    csvReader = csv.reader(open('/mnt/tests/kernel/networking/vsperf/install/baseline.csv', 'rb'))
+    csvReader = csv.reader(open('/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI/report/baseline.csv', 'rb'))
     row = col = 0
     rlt = None
     for i in csvReader:

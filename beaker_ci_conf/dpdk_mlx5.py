@@ -181,6 +181,7 @@ def _unbind_nics():
         _LOGGER.info('NICs are not configured - nothing to unbind')
         return
     try:
+        '''
         if 'mlx' in S.getValue('TOOLS')['dpdk_modules']:
             return
         if 'driverctl' in S.getValue('TOOLS')['bind-tool'].lower():
@@ -197,7 +198,6 @@ def _unbind_nics():
                            _NICS_PCI, _LOGGER,
                            'Unbinding NICs %s...' % str(_NICS_PCI),
                            True)
-        '''
     except subprocess.CalledProcessError:
         _LOGGER.error('Unable to unbind NICs %s', str(_NICS_PCI))
     # Rebind NICs to their original drivers

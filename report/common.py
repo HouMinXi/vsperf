@@ -58,7 +58,7 @@ def httplib_get_demo():
     print(response)
     print(content)
 
-@speed_control(5, 100)
+@speed_control(50, 100)
 def updateVar(spreadsheetId, data, rangeName = 'sheet1!A1:Z'):
     """
     update a array of data to sheet, values like this:

@@ -36,7 +36,7 @@ class QemuPciPassthrough(IVnfQemu):
         from subprocess import Popen, PIPE
         def run_shell(cmd):
             return Popen([cmd], shell=True, stdout=PIPE, stderr=PIPE).communicate()[0]
-        print(run_shell("/bin/bash /mnt/tests/kernel/networking/vsperf/vsperf_CI/beaker_ci_conf/change_mac.sh "+S.getValue('NIC1')+" "+S.getValue('NIC2')))
+        print(run_shell("/bin/bash /mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI/beaker_ci_conf/change_mac.sh "+S.getValue('NIC1')+" "+S.getValue('NIC2')))
         super(QemuPciPassthrough, self).__init__()
         self._logger = logging.getLogger(__name__)
         self._host_nics = S.getValue('NICS')
@@ -62,9 +62,7 @@ class QemuPciPassthrough(IVnfQemu):
         # bind every interface to vfio-pci driver
         try:
             nics_list = list(tmp_nic['pci'] for tmp_nic in self._host_nics)
-            tasks.run_task(['sudo', S.getValue('TOOLS')['bind-tool'], '-v', 'set-override', nics_list[0], 'vfio-pci'],
-                           self._logger, 'Binding NICs %s...' % nics_list, True)
-            tasks.run_task(['sudo', S.getValue('TOOLS')['bind-tool'], '-v', 'set-override', nics_list[1], 'vfio-pci'],
+            tasks.run_task(['sudo',S.getValue('TOOLS')['bind-tool'], '--bind=vfio-pci'] + nics_list,
                            self._logger, 'Binding NICs %s...' % nics_list, True)
 
         except subprocess.CalledProcessError:
@@ -82,9 +80,7 @@ class QemuPciPassthrough(IVnfQemu):
         for nic in self._host_nics:
             if nic['driver']:
                 try:
-                    tasks.run_task(['sudo',S.getValue('TOOLS')['bind-tool'],'-v', 'set-override', nic['pci'], S.getValue('BEAKER_NIC_DRIVER')],
-                                   self._logger, 'Binding NIC %s...' % nic['pci'], True)
-                    tasks.run_task(['sudo',S.getValue('TOOLS')['bind-tool'],'-v', 'set-override', nic['pci'], S.getValue('BEAKER_NIC_DRIVER')],
+                    tasks.run_task(['sudo',S.getValue('TOOLS')['bind-tool'], '--bind=' + nic['driver'], nic['pci']],
                                    self._logger, 'Binding NIC %s...' % nic['pci'], True)
 
                 except subprocess.CalledProcessError:

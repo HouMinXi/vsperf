@@ -1,5 +1,5 @@
 #!/bin/sh
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 yum install -y wget
 
 install_pip() {
@@ -13,12 +13,9 @@ install_pip() {
 
 echo "start install pip latest version"
 install_pip
-. /etc/os-release
-if (($(bc <<< "$VERSION_ID < 8"))); then
-	pip install -I pyparsing==2.2.0
-fi
+
 python2 -m pip install --upgrade google-api-python-client >> ${CASE_PATH}/pip_install.log
 python2 -m pip install oauth2client >> ${CASE_PATH}/pip_install.log
 mkdir -p /root/.credentials
 #wget -P /root/.credentials/ http://netqe-infra01.knqe.lab.eng.bos.redhat.com/sheets.googleapis.com-python-quickstart.json
-\cp /mnt/tests/kernel/networking/vsperf/vsperf_CI/report/sheets.googleapis.com-python-quickstart.json /root/.credentials/
+\cp /mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI/report/sheets.googleapis.com-python-quickstart.json /root/.credentials/

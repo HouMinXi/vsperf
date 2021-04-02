@@ -86,10 +86,35 @@ class IVnfQemu(IVnf):
         # don't use taskset to affinize main qemu process; It causes hangup
         # of 2nd VM in case of DPDK. It also slows down VM responsivnes.
         cpumask = ",".join(S.getValue('GUEST_CORE_BINDING')[self._number])
+        #cpumask = ",".join(S.getValue('GUEST_EMULATORPIN')[self._number])
+        # self._cmd = ['sudo', '-E', 'taskset', '-c', cpumask,
+        #              S.getValue('TOOLS')['qemu-system'],
+        #              '-m', S.getValue('GUEST_MEMORY')[self._number],
+        #              '-smp', str(S.getValue('GUEST_SMP')[self._number]),
+        #              '-cpu', 'host,migratable=off',
+        #              '-drive', 'if={},file='.format(S.getValue(
+        #                  'GUEST_BOOT_DRIVE_TYPE')[self._number]) +
+        #              S.getValue('GUEST_IMAGE')[self._number],
+        #              '-boot', 'c', '--enable-kvm',
+        #              '-monitor', 'unix:%s,server,nowait' % self._monitor,
+        #              '-object',
+        #              'memory-backend-file,id=mem,size=' +
+        #              str(S.getValue('GUEST_MEMORY')[self._number]) + 'M,' +
+        #              'mem-path=' + S.getValue('HUGEPAGE_DIR') + ',share=on,prealloc=yes,host-nodes=0,policy=bind',
+        #              # due bug 1624223, delete -mem-prealloc
+        #              '-numa', 'node,cpus=0-%s,nodeid=0,memdev=mem' %str(int(S.getValue('GUEST_SMP')[self._number])-1),
+        #              '-nographic', '-vnc', str(vnc), '-name', name,
+        #              '-snapshot', '-net none', '-no-reboot',
+        #              '-M q35,kernel-irqchip=split -device intel-iommu,device-iotlb=on,intremap,caching-mode=true',
+        #              '-device pcie-root-port,id=root.1,slot=1 -device pcie-root-port,id=root.2,slot=2 -device pcie-root-port,id=root.3,slot=3 -device pcie-root-port,id=root.4,slot=4',
+                     #'-drive',
+                     #'if=%s,format=raw,file=fat:rw:%s,snapshot=off' %
+                     #(S.getValue('GUEST_SHARED_DRIVE_TYPE')[self._number],
+                     # S.getValue('GUEST_SHARE_DIR')[self._number]),
         self._cmd = ['sudo', '-E', 'taskset', '-c', cpumask,
                      S.getValue('TOOLS')['qemu-system'],
                      '-m', S.getValue('GUEST_MEMORY')[self._number],
-                     '-smp', str(S.getValue('GUEST_SMP')[self._number]),       
+                     '-smp', str(S.getValue('GUEST_SMP')[self._number]),
                      '-cpu', 'host,migratable=off',
                      '-drive', 'if={},file='.format(S.getValue(
                          'GUEST_BOOT_DRIVE_TYPE')[self._number]) +
@@ -105,11 +130,8 @@ class IVnfQemu(IVnf):
                      '-snapshot', '-net none', '-no-reboot',
                      '-M q35,kernel-irqchip=split -device intel-iommu,device-iotlb=on,intremap,caching-mode=true',
                      '-device pcie-root-port,id=root.1,slot=1 -device pcie-root-port,id=root.2,slot=2 -device pcie-root-port,id=root.3,slot=3 -device pcie-root-port,id=root.4,slot=4',
-                     #'-drive',
-                     #'if=%s,format=raw,file=fat:rw:%s,snapshot=off' %
-                     #(S.getValue('GUEST_SHARED_DRIVE_TYPE')[self._number],
-                     # S.getValue('GUEST_SHARE_DIR')[self._number]),
                     ]
+
         self._configure_logging()
 
     def _configure_logging(self):
@@ -237,12 +259,13 @@ class IVnfQemu(IVnf):
 
         for cpu in range(0, int(S.getValue('GUEST_SMP')[self._number])):
             match = None
+            guest_thread_binding = S.getValue('GUEST_THREAD_BINDING')[self._number]
+            if guest_thread_binding is None:
+                guest_thread_binding = S.getValue('GUEST_CORE_BINDING')[self._number]
             for line in output.decode(cur_locale).split('\n'):
                 match = re.search(thread_id % cpu, line)
                 if match:
-                    self._affinitize_pid(
-                        S.getValue('GUEST_CORE_BINDING')[self._number][cpu],
-                        match.group(1))
+                    self._affinitize_pid(guest_thread_binding[cpu], match.group(1))
                     break
 
             if not match:
@@ -430,7 +453,7 @@ class IVnfQemu(IVnf):
         self.execute_and_wait('cd /usr/bin')
         self.execute_and_wait('./testpmd {}'.format(testpmd_params), 60, "Done")
         self.execute('set fwd ' + self._testpmd_fwd_mode, 1)
-        self.execute_and_wait('start', 20, 'testpmd>')
+        self.execute_and_wait('start', 60, 'testpmd>')
 
     def _configure_l2fwd(self):
         """

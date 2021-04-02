@@ -9,7 +9,7 @@ set -x
 
 PACKAGE="kernel"
 VSPERF="/root/vswitchperf/vsperf"
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 source ${CASE_PATH}/env.sh
 source ${CASE_PATH}/common.sh
 . /etc/os-release

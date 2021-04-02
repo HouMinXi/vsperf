@@ -1,7 +1,7 @@
 from __future__ import print_function
 import httplib2
 import os
-
+import argparse
 from googleapiclient import discovery
 from oauth2client import client
 from oauth2client import tools
@@ -15,7 +15,6 @@ class GoogleHttp(object):
     
     def get_credentials(self):
         try:
-            import argparse
             flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
         except ImportError:
             flags = None
@@ -26,7 +25,7 @@ class GoogleHttp(object):
         #SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
         SCOPES = 'https://www.googleapis.com/auth/drive'
         CLIENT_SECRET_FILE = 'client_secret.json'
-        APPLICATION_NAME = 'Google API Python Quickstart'
+        APPLICATION_NAME = 'mhou'
         
         """Gets valid user credentials from storage.
 
@@ -49,9 +48,9 @@ class GoogleHttp(object):
             flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
             flow.user_agent = APPLICATION_NAME
             if flags:
-                credentials = tools.run_flow(flow, store, flags)
+                credentials = tools.run_flow(flow, store, flags, tools.argparser.parse_args(args=['--noauth_local_webserver']))
             else: # Needed only for compatibility with Python 2.6
-                credentials = tools.run(flow, store)
+                credentials = tools.run(flow, store, tools.argparser.parse_args(args=['--noauth_local_webserver']))
             print('Storing credentials to ' + credential_path)
         return credentials
     
@@ -78,6 +77,6 @@ class GoogleHttp(object):
         elif self.api == 'drive':
             return discovery.build('drive', 'v3', http=http)
         
-        
+
         
         

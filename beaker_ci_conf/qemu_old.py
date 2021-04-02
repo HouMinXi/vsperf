@@ -235,12 +235,13 @@ class IVnfQemu(IVnf):
 
         for cpu in range(0, int(S.getValue('GUEST_SMP')[self._number])):
             match = None
+            guest_thread_binding = S.getValue('GUEST_THREAD_BINDING')[self._number]
+            if guest_thread_binding is None:
+                guest_thread_binding = S.getValue('GUEST_CORE_BINDING')[self._number]
             for line in output.decode(cur_locale).split('\n'):
                 match = re.search(thread_id % cpu, line)
                 if match:
-                    self._affinitize_pid(
-                        S.getValue('GUEST_CORE_BINDING')[self._number][cpu],
-                        match.group(1))
+                    self._affinitize_pid(guest_thread_binding[cpu], match.group(1))
                     break
 
             if not match:

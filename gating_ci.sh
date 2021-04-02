@@ -2,7 +2,7 @@
 # Include Beaker environment
 . /mnt/tests/kernel/networking/common/include.sh || exit 1
 
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 . /etc/os-release
 if (($(bc <<< "$VERSION_ID >= 8"))); then
 VSPERF_CMD="/usr/libexec/platform-python /root/vswitchperf/vsperf"
@@ -39,7 +39,7 @@ run_pvp_tput_sriov(){
 	for i in 64 128 256 1500
         do
 	pushd /root/vswitchperf/
-	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_baseline_guest_${1}.conf --vswitch=none --vnf QemuPciPassthrough --test-params "TRAFFICGEN_DURATION=60;TRAFFICGEN_LOSSRATE=${LOSSRATE};TRAFFICGEN_PKT_SIZES=(${i},);TRAFFICGEN_RFC2544_TESTS=1"
+	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_baseline_guest_${1}.conf --vswitch=none --vnf QemuPciPassthrough --test-params "TRAFFICGEN_DURATION=10;TRAFFICGEN_LOSSRATE=${LOSSRATE};TRAFFICGEN_PKT_SIZES=(${i},);TRAFFICGEN_RFC2544_TESTS=1"
 	move_result "gating_baseline_guest_pvp_tput_${i}_0.00_${TRAFFIC_GEN}_${1}"
 	popd
 	done
@@ -48,13 +48,9 @@ run_pvp_tput_sriov(){
 
 run_pvp_tput_testpmd_as_switch(){
         echo 0 > /proc/sys/kernel/nmi_watchdog
-        #echo aa,aaaaaaaa,aaaaaaaa > /sys/bus/workqueue/devices/writeback/cpumask
-	if [ ${NIC_DRIVER} == "mlx5_core" ] && [ $(hostname) == "dell-per730-56.rhts.eng.pek2.redhat.com" ]
-	then
-		\cp ${CASE_PATH}/beaker_ci_conf/testpmd.py /root/vswitchperf/tools/pkt_fwd/testpmd.py
-	fi
+        echo aa,aaaaaaaa,aaaaaaaa > /sys/bus/workqueue/devices/writeback/cpumask
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_baseline_testpmd_as_switch.conf --vswitch=none --fwdapp=TestPMD --test-params "TRAFFICGEN_DURATION=60;TRAFFICGEN_LOSSRATE=${LOSSRATE};TRAFFICGEN_PKT_SIZES=(64,);TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_baseline_testpmd_as_switch.conf --vswitch=none --fwdapp=TestPMD --test-params "TRAFFICGEN_DURATION=10;TRAFFICGEN_LOSSRATE=${LOSSRATE};TRAFFICGEN_PKT_SIZES=(64,);TRAFFICGEN_RFC2544_TESTS=1"
         popd
         move_result "gating_baseline_testpmd_as_switch_pvp_tput_64_0.00_${TRAFFIC_GEN}"
 }
@@ -68,7 +64,8 @@ run_pvp_tput_1q_2pmd(){
 		\cp ${CASE_PATH}/beaker_ci_conf/qemu_dpdk_vhost_user_viommu.py /root/vswitchperf/vnfs/qemu/qemu_dpdk_vhost_user.py
 	fi
         pushd /root/vswitchperf/
-	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_2pmd_testpmd_${TRAFFIC_GEN}_${1}"
 	popd
 	done
@@ -82,7 +79,8 @@ run_pvp_tput_1q_4pmd(){
                 \cp ${CASE_PATH}/beaker_ci_conf/qemu_dpdk_vhost_user_viommu.py /root/vswitchperf/vnfs/qemu/qemu_dpdk_vhost_user.py
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_4pmd_testpmd_${TRAFFIC_GEN}_${1}"
         popd
         done
@@ -97,7 +95,8 @@ run_pvp_tput_2q_4pmd(){
                 \cp ${CASE_PATH}/beaker_ci_conf/qemu_dpdk_vhost_user_viommu.py /root/vswitchperf/vnfs/qemu/qemu_dpdk_vhost_user.py
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_2q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_2q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_2-Queue_${i}_0.00_UseCase-1A_4pmd_testpmd_${TRAFFIC_GEN}_${1}"
         popd
 	done
@@ -111,7 +110,8 @@ run_pvp_tput_4q_8pmd(){
                 \cp ${CASE_PATH}/beaker_ci_conf/qemu_dpdk_vhost_user_viommu.py /root/vswitchperf/vnfs/qemu/qemu_dpdk_vhost_user.py
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_4q_testpmd_8pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_4q_testpmd_8pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_4-Queue_${i}_0.00_UseCase-1A_8pmd_testpmd_${TRAFFIC_GEN}_${1}"
         popd
 	done
@@ -173,14 +173,16 @@ TRAFFICGEN_XENA_2544_LATENCY_END_VALUE='${half_pps_percent}'
 EOF
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_2pmd_testpmd_${TRAFFIC_GEN}_${1}_latency"
         popd
         done
 }
 
 run_pvp_latency_half_1q_4pmd(){
-        for i in 64 128 256 1500
+  # due to run_pvp_tput_1q_4pmd just run 64 and 1500 bytes, so latency just test 64 and 1500 bytes.
+        for i in 64  1500
         do
                 if [ ${1} == "enableviommu" ];then
                 sed -i 's/VSWITCHD_DPDK_CONFIG = {/VSWITCHD_DPDK_CONFIG = {"vhost-iommu-support":"true",/g' $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1
@@ -199,8 +201,9 @@ TRAFFICGEN_XENA_2544_LATENCY_END_VALUE='${half_pps_percent}'
 EOF
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60
+        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10
 ; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_4pmd_testpmd_${TRAFFIC_GEN}_${1}_latency"
         popd
         done
@@ -226,8 +229,9 @@ TRAFFICGEN_XENA_2544_LATENCY_END_VALUE='${half_pps_percent}'
 EOF
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_2q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60
+        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_2q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10
 ; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_2-Queue_${i}_0.00_UseCase-1A_4pmd_testpmd_${TRAFFIC_GEN}_${1}_latency"
         popd
         done
@@ -253,8 +257,9 @@ TRAFFICGEN_XENA_2544_LATENCY_END_VALUE='${half_pps_percent}'
 EOF
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_4q_testpmd_8pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60
+        ${VSPERF_CMD} pvp_latency --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_4q_testpmd_8pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10
 ; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_4-Queue_${i}_0.00_UseCase-1A_8pmd_testpmd_${TRAFFIC_GEN}_${1}_latency"
         popd
         done
@@ -267,9 +272,11 @@ run_jumbo_case(){
 	pushd /root/vswitchperf/
 	echo "${i}" > /sys/class/net/${NIC1}/mtu
         echo "${i}" > /sys/class/net/${NIC2}/mtu        
-	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}_${i}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
-        move_result "gating_1-Queue_${i}_0.00_UseCase-1A_2pmd_testpmd_${TRAFFIC_GEN}_${1}"	
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}_${i}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}_${i}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
+        move_result "gating_1-Queue_${i}_0.00_UseCase-1A_2pmd_testpmd_${TRAFFIC_GEN}_${1}"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}_${i}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_4pmd_testpmd_${TRAFFIC_GEN}_${1}"
 	popd
 	done
@@ -279,9 +286,11 @@ run_enablebuf_case(){
         for i in 64 1500
         do
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_2pmd_testpmd_${TRAFFIC_GEN}_${1}"
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_4pmd_testpmd_${TRAFFIC_GEN}_${1}"
         popd
 	done
@@ -291,7 +300,8 @@ run_higher_flow_case(){
         for i in 64 1500
         do
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=${LOSSRATE}; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.00_UseCase-1A_2pmd_testpmd_${TRAFFIC_GEN}_${1}"
         popd
         done
@@ -313,9 +323,11 @@ run_vanilla_linuxbridge_case(){
 		\cp ${CASE_PATH}/beaker_ci_conf/qemu_ovsvanilla.py /root/vswitchperf/vnfs/qemu/qemu.py
 	fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_1q_linuxbridge.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_1q_linuxbridge.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.002_UseCase-2A_vanilla_linuxbridge"
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_2q_linuxbridge.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_2q_linuxbridge.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_2-Queue_${i}_0.002_UseCase-2A_vanilla_linuxbridge"
         popd
         done
@@ -325,12 +337,14 @@ run_vanilla_linuxbridge_case(){
 run_vanilla_testpmd_case(){
         for i in 64 1500
         do
-	modify_qemu_file_enable_viommu
+        \cp ${CASE_PATH}/beaker_ci_conf/qemu_viommu.py /root/vswitchperf/vnfs/qemu/qemu.py
 	\cp ${CASE_PATH}/beaker_ci_conf/qemu_virtio_net.py /root/vswitchperf/vnfs/qemu/qemu_virtio_net.py
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_1q_testpmd.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_1q_testpmd.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_1-Queue_${i}_0.002_UseCase-2A_vanilla_testpmd"
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_2q_testpmd.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_ovsvanilla_2q_testpmd.conf --test-params "TRAFFICGEN_DURATION=10; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.002; TRAFFICGEN_RFC2544_TESTS=1"
+        sleep 1
         move_result "gating_2-Queue_${i}_0.002_UseCase-2A_vanilla_testpmd"
         popd
         done
@@ -360,9 +374,6 @@ if ! ls ${CASE_PATH}/TASK*; then
 	if [ ${NIC_DRIVER} == "qede" ];then
                 qede_patch
         fi
-	if [ ${N3000_IS} == "True" ];then
-		n3000_patch
-	fi
         touch ${CASE_PATH}/TASK1
         echo "Before the first reboot, after touch the TASK1, check whether create TASK1"
         ls -l ${CASE_PATH}
@@ -451,27 +462,23 @@ if [ -f ${CASE_PATH}/TASK2 ]; then
 	fi
 	Activate_Python3
 	modify_qemu_file_disable_viommu
-	if [ $run_novlan == 'true' ];then
-		run_pvp_tput_1q_2pmd novlan
-        	run_pvp_tput_1q_4pmd novlan
-		run_pvp_tput_2q_4pmd novlan
-        	run_pvp_tput_4q_8pmd novlan
-	fi
-        run_pvp_tput_1q_2pmd vlan
-        run_pvp_tput_2q_4pmd vlan
-        run_pvp_tput_4q_8pmd vlan	
+	run_pvp_tput_1q_2pmd novlan
+	run_pvp_tput_1q_4pmd novlan
+	run_pvp_tput_2q_4pmd novlan
+	run_pvp_tput_4q_8pmd novlan
+	run_pvp_tput_1q_2pmd vlan
+  run_pvp_tput_2q_4pmd vlan
+	run_pvp_tput_4q_8pmd vlan
 	#add pvp latency test with 50% throughtput
 	
 	run_pvp_latency_half_1q_2pmd novlan
 	run_pvp_latency_half_1q_4pmd novlan
-        run_pvp_latency_half_2q_4pmd novlan
-        run_pvp_latency_half_4q_8pmd novlan
-        run_pvp_latency_half_1q_2pmd vlan
-        run_pvp_latency_half_2q_4pmd vlan
-        run_pvp_latency_half_4q_8pmd vlan
-	if [ $run_enablebuf == 'true' ];then
-		run_enablebuf_case enablebuf
-	fi
+  run_pvp_latency_half_2q_4pmd novlan
+  run_pvp_latency_half_4q_8pmd novlan
+  run_pvp_latency_half_1q_2pmd vlan
+  run_pvp_latency_half_2q_4pmd vlan
+  run_pvp_latency_half_4q_8pmd vlan
+	run_enablebuf_case enablebuf
 	run_jumbo_case novlan 
         run_higher_flow_case 10kflows
 	run_higher_flow_case 100kflows

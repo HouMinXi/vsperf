@@ -2,7 +2,7 @@
 # Include Beaker environment
 . /mnt/tests/kernel/networking/common/include.sh || exit 1
 
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 VSPERF_CMD="/root/vswitchperf/vsperf"
 source ${CASE_PATH}/env.sh
 source ${CASE_PATH}/common.sh

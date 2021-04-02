@@ -1,5 +1,5 @@
 #!/bin/bash
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 source ${CASE_PATH}/env.sh
 . /etc/os-release
 set -x
@@ -12,7 +12,7 @@ get_nic_info(){
 	NICNUMA=`cat /sys/class/net/$NIC1/device/numa_node`
 	echo 'NICNUMA="'${NICNUMA}'"' >>  ${CASE_PATH}/nic_info.conf
 	echo 'NIC1_PCI_ADDR="'${NIC1_PCI_ADDR}'"' >> ${CASE_PATH}/nic_info.conf
-	echo 'NIC2_PCI_ADDR="'${NIC2_PCI_ADDR}'"' >> ${CASE_PATH}/nic_info.conf	
+	echo 'NIC2_PCI_ADDR="'${NIC2_PCI_ADDR}'"' >> ${CASE_PATH}/nic_info.conf
 }
 
 bug1378586_workaround(){
@@ -46,21 +46,11 @@ mlx_patch(){
 }
 
 mlx_patch_sriov(){
-	dpdk_version=`rpm -qa dpdk|awk -F '-' '{printf $2}' |awk -F '.' '{printf $1}'`
-	if [ $dpdk_version -ge 20 ];then
-		\cp ${CASE_PATH}/beaker_ci_conf/qemu_mlx_sriov_20.py /root/vswitchperf/vnfs/qemu/qemu.py
-	else
-		\cp ${CASE_PATH}/beaker_ci_conf/qemu_mlx_sriov.py /root/vswitchperf/vnfs/qemu/qemu.py
-	fi
+	\cp ${CASE_PATH}/beaker_ci_conf/qemu_mlx_sriov.py /root/vswitchperf/vnfs/qemu/qemu.py
 }
 
 bnxt_patch(){
-        dpdk_version=`rpm -qa dpdk|awk -F '-' '{printf $2}' |awk -F '.' '{printf $1}'`
-        if [ $dpdk_version -ge 20 ];then
-		\cp ${CASE_PATH}/beaker_ci_conf/qemu_bnxt_sriov_20.py /root/vswitchperf/vnfs/qemu/qemu.py
-	else
-		\cp ${CASE_PATH}/beaker_ci_conf/qemu_bnxt_sriov.py /root/vswitchperf/vnfs/qemu/qemu.py
-	fi
+	\cp ${CASE_PATH}/beaker_ci_conf/qemu_bnxt_sriov.py /root/vswitchperf/vnfs/qemu/qemu.py
 }
 
 nfp_patch(){
@@ -93,52 +83,6 @@ qede_patch()
     		SERVER="netqe-infra01.knqe.lab.eng.bos.redhat.com/vm"
 	fi
         wget -P /usr/lib/firmware/qed/ $SERVER/qed_init_values-8.40.33.0.bin
-}
-
-n3000_patch()
-{
-	wget -P /root/ http://netqe-bj.usersys.redhat.com/share/tli/n3000/n3000_ias_1_3_1_pv_rte_RHEL_installer.tar.gz
-	yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	yum install epel-release -y
-	yum install gcc gcc-c++ cmake make autoconf automake libxml2 libxml2-devel json-c-devel boost ncurses ncurses-devel ncurses-libs boost-devel libuuid libuuid-devel python2-jsonschema doxygen hwloc-devel libpng12 rsync openssl-devel bc python-devel python-libs python-sphinx openssl python2-pip python3 -y 
-	yum install python3-devel python3-libs python3-sphinx python3-jsonschema -y
-	pushd /root/
-        tar xzvf n3000_ias_1_3_1_pv_rte_RHEL_installer.tar.gz
-	pushd n3000_ias_1_3_1_pv_rte_RHEL_installer
-	sh n3000-1.3.8-3-rte-el8-setup.sh
-expect -c "
-    spawn sh n3000-1.3.8-3-rte-el8-setup.sh
-    expect \"Do you wish to install OPAE Software\"
-    send \"y\n\r\"
-    expect \"Do you wish to install OPAE PACSign\"
-    send \"y\n\r\"
-    expect \"Do you wish to install OPAE SDK Source\"
-    send \"y\n\r\"
-    expect \"Do you wish to install OPAE Driver Source RPM\"
-    send \"y\n\r\"
-    expect \"Do you wish to install OPAE Admin Source\"
-    send \"y\n\r\"
-    expect \"Do you wish to install OPAE PACSign Source\"
-    send \"y\n\r\"
-    expect \"o you wish to install OPAE Software Samples\"
-    send \"y\n\r\"
-    expect \"Do you wish to install N3000 A10 Image\"
-    send \"y\n\r\"
-    expect \"Do you wish to install Environment Initialization\"
-    send \"y\n\r\"
-    expect \"Analyzing dependencies\"
-    send \"\n\r\"
-    expect \"Is this ok\"
-    send \"y\n\r\"
-    expect \"Is this ok\"
-    send \"y\n\r\"
-    expect \"Is this ok\"
-    send \"y\n\r\"
-    expect eof
-"
-	source /root/intelrtestack/bin/init_env.sh
-        popd
-	fpgainfo phy
 }
 
 enable_ovs_debug(){
@@ -214,31 +158,11 @@ Activate_Python3() {
 	fi
 }
 
-:<<block
-modify_qemu_file_enable_viommu() {
-    \cp ${CASE_PATH}/beaker_ci_conf/qemu_${guest_dpdk_version}_viommu.py /root/vswitchperf/vnfs/qemu/qemu.py
-}
-
-modify_qemu_file_disable_viommu() {
-    \cp ${CASE_PATH}/beaker_ci_conf/qemu_${guest_dpdk_version}.py /root/vswitchperf/vnfs/qemu/qemu.py
-}
-
-modify_qemu_file_testpmd_as_switch() {
-    \cp ${CASE_PATH}/beaker_ci_conf/qemu_testpmd_as_switch_${guest_dpdk_version}.py /root/vswitchperf/vnfs/qemu/qemu.py
-}
-block
-
 modify_qemu_file_enable_viommu() {
     if [ "$QEMU_VER" == "OSP8" ] || [ "$QEMU_VER" == "29" ] || [ "$QEMU_VER" == "210" ];then
 	    \cp ${CASE_PATH}/beaker_ci_conf/qemu_viommu_old.py /root/vswitchperf/vnfs/qemu/qemu.py
     else
-	dpdk_version=`rpm -qa dpdk|awk -F '-' '{printf $2}' |awk -F '.' '{printf $1}'`
-	if [ $dpdk_version -ge 20 ];then
-	    \cp ${CASE_PATH}/beaker_ci_conf/qemu_viommu_20.py /root/vswitchperf/vnfs/qemu/qemu.py
-	     \cp ${CASE_PATH}/beaker_ci_conf/systeminfo.py /root/vswitchperf/tools/systeminfo.py
-        else
-            \cp ${CASE_PATH}/beaker_ci_conf/qemu_viommu.py /root/vswitchperf/vnfs/qemu/qemu.py
-	fi	
+	    \cp ${CASE_PATH}/beaker_ci_conf/qemu_viommu.py /root/vswitchperf/vnfs/qemu/qemu.py	
     fi
 }
 
@@ -246,24 +170,13 @@ modify_qemu_file_disable_viommu() {
     if [ "$QEMU_VER" == "OSP8" ] || [ "$QEMU_VER" == "29" ] || [ "$QEMU_VER" == "210" ];then
             \cp ${CASE_PATH}/beaker_ci_conf/qemu_old.py /root/vswitchperf/vnfs/qemu/qemu.py
     else
-	dpdk_version=`rpm -qa dpdk|awk -F '-' '{printf $2}' |awk -F '.' '{printf $1}'`
-        if [ $dpdk_version -ge 20 ];then
-            \cp ${CASE_PATH}/beaker_ci_conf/qemu_20.py /root/vswitchperf/vnfs/qemu/qemu.py
-	    \cp ${CASE_PATH}/beaker_ci_conf/systeminfo.py /root/vswitchperf/tools/systeminfo.py 
-	else
-	    \cp ${CASE_PATH}/beaker_ci_conf/qemu.py /root/vswitchperf/vnfs/qemu/qemu.py
-	fi
+            \cp ${CASE_PATH}/beaker_ci_conf/qemu.py /root/vswitchperf/vnfs/qemu/qemu.py
     fi
 }
 
 
 modify_qemu_file_testpmd_as_switch() {
-   dpdk_version=`rpm -qa dpdk|awk -F '-' '{printf $2}' |awk -F '.' '{printf $1}'`
-   if [ $dpdk_version -ge 20 ];then
-	\cp ${CASE_PATH}/beaker_ci_conf/qemu_testpmd_as_switch_20.py /root/vswitchperf/vnfs/qemu/qemu.py
-   else
-   	 \cp ${CASE_PATH}/beaker_ci_conf/qemu_testpmd_as_switch.py /root/vswitchperf/vnfs/qemu/qemu.py
-   fi
+    \cp ${CASE_PATH}/beaker_ci_conf/qemu_testpmd_as_switch.py /root/vswitchperf/vnfs/qemu/qemu.py
 }
 
 modify_enable_mergable_buffers(){
@@ -317,75 +230,97 @@ fi
 OS_NAME="$VERSION_ID"
 if (($(bc <<< "$VERSION_ID < 8"))); then
 QEMU_VER=$1
-if [ "$QEMU_VER" == "OSP8" ]
-        then
-        yum install -y qemu-kvm-rhev* >> ${CASE_PATH}/qemu_install.log
-
-elif [ "$QEMU_VER" == "29" ]
-    then
-    	mkdir ~/qemu29
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-img-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-kvm-common-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-kvm-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-kvm-tools-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
-    	rpm -e qemu-kvm-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-    	rpm -e qemu-kvm-common-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-    	rpm -e qemu-img-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-    	rpm -e qemu-kvm-tools-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-    	yum install -y http://download-node-02.eng.bos.redhat.com/brewroot/packages/seabios/1.10.2/3.el7_4.1/noarch/seabios-bin-1.10.2-3.el7_4.1.noarch.rpm
-    	yum install -y http://download-node-02.eng.bos.redhat.com/brewroot/packages/seabios/1.10.2/3.el7_4.1/noarch/seavgabios-bin-1.10.2-3.el7_4.1.noarch.rpm
-    	yum install -y http://download-node-02.eng.bos.redhat.com/brewroot/packages/ipxe/20170123/1.git4e85b27.el7_4.1/noarch/ipxe-roms-qemu-20170123-1.git4e85b27.el7_4.1.noarch.rpm
-    	yum install -y ~/qemu29/qemu-img-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
-    	yum install -y ~/qemu29/qemu-kvm-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
-    	yum install -y ~/qemu29/qemu-kvm-common-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
-    	yum install -y ~/qemu29/qemu-kvm-tools-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
-    	yum install -y ~/qemu29/qemu-kvm-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
-elif [ "$QEMU_VER" == "210" ]
-    then
-    	mkdir ~/qemu210
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-img-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-common-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-rhev-debuginfo-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
-	wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-tools-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
-	rpm -e qemu-kvm-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-        rpm -e qemu-kvm-common-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-        rpm -e qemu-img-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-        rpm -e qemu-kvm-tools-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
-	pushd ~/qemu210
-	yum install * -y
-	popd
-elif [ "$QEMU_VER" == "212" ]
-    then
-	qemu_install
-fi
-elif [ "$QEMU_VER" == "custom" ]
-    then
-cat > /etc/yum.repos.d/qemu.repo << _EOF
-[qemu]
-name=qemu
-baseurl=${custom_qemu_url}
-enabled=1
-gpgcheck=0
-skip_if_unavailable=1
-_EOF
-	yum -y remove @virt
-	yum module reset virt -y
-	yum module enable virt:8.3/common -y
-	yum install --repo qemu qemu-kvm -y
-else
+  if [ "$QEMU_VER" == "OSP8" ];then
+    yum install -y qemu-kvm-rhev* >> ${CASE_PATH}/qemu_install.log
+  elif [ "$QEMU_VER" == "29" ]; then
+    mkdir ~/qemu29
+	  wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-img-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
+	  wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-kvm-common-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
+	  wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-kvm-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
+	  wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.9.0/16.el7_4.13/x86_64/qemu-kvm-tools-rhev-2.9.0-16.el7_4.13.x86_64.rpm -P ~/qemu29
+    rpm -e qemu-kvm-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+    rpm -e qemu-kvm-common-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+    rpm -e qemu-img-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+    rpm -e qemu-kvm-tools-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+    yum install -y http://download-node-02.eng.bos.redhat.com/brewroot/packages/seabios/1.10.2/3.el7_4.1/noarch/seabios-bin-1.10.2-3.el7_4.1.noarch.rpm
+    yum install -y http://download-node-02.eng.bos.redhat.com/brewroot/packages/seabios/1.10.2/3.el7_4.1/noarch/seavgabios-bin-1.10.2-3.el7_4.1.noarch.rpm
+    yum install -y http://download-node-02.eng.bos.redhat.com/brewroot/packages/ipxe/20170123/1.git4e85b27.el7_4.1/noarch/ipxe-roms-qemu-20170123-1.git4e85b27.el7_4.1.noarch.rpm
+    yum install -y ~/qemu29/qemu-img-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
+    yum install -y ~/qemu29/qemu-kvm-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
+    yum install -y ~/qemu29/qemu-kvm-common-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
+    yum install -y ~/qemu29/qemu-kvm-tools-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
+    yum install -y ~/qemu29/qemu-kvm-rhev-2.9.0-16.el7_4.13.x86_64.rpm >> ${CASE_PATH}/qemu_install.log
+  elif [ "$QEMU_VER" == "210" ];then
+    mkdir ~/qemu210
+    wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-img-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
+    wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-common-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
+    wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
+    wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-rhev-debuginfo-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
+    wget http://$SERVER/brewroot/packages/qemu-kvm-rhev/2.10.0/20.el7/x86_64/qemu-kvm-tools-rhev-2.10.0-20.el7.x86_64.rpm -P ~/qemu210/.
+	  rpm -e qemu-kvm-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+    rpm -e qemu-kvm-common-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+    rpm -e qemu-img-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+    rpm -e qemu-kvm-tools-rhev-2.6.0-28.el7_3.9.x86_64 --nodeps >> ${CASE_PATH}/qemu_install.log
+	  pushd ~/qemu210
+	  yum install * -y
+	  popd
+  elif [ "$QEMU_VER" == "212" ];then
+	  yum install -y $QEMU_IMG_RHEV
+    yum install -y $QEMU_KVM_RHEV
+    yum install -y $QEMU_KVM_COMMON_RHEV
+    yum install -y $QEMU_KVM_TOOLS_RHEV
+    yum install -y $QEMU_KVM_RHEV
+    yum install -y qemu-kvm
+  fi
+elif [ "$QEMU_VER" == "212" ];then
+	  yum install -y $QEMU_IMG_RHEV
+    yum install -y $QEMU_KVM_RHEV
+    yum install -y $QEMU_KVM_COMMON_RHEV
+    yum install -y $QEMU_KVM_TOOLS_RHEV
+    yum install -y $QEMU_KVM_RHEV
+    yum install -y qemu-kvm
+elif  [ "$QEMU_VER" == "dnf" ];then
 	dnf module install virt -y
+elif  [ "$QEMU_VER" == "custom" ] && (($(bc <<< "$VERSION_ID == 8.0"))); then
+  custom_qemu_url="http://download-01.eng.brq.redhat.com/rhel-8/nightly/ADVANCED-VIRT-8/latest-ADVANCED-VIRT-8.0.1-RHEL-8/compose/Advanced-virt/x86_64/os/"
+  qemu_install $VERSION_ID
+elif [ "$QEMU_VER" == "custom" ] && (($(bc <<< "$VERSION_ID == 8.1"))); then
+  custom_qemu_url="http://download-01.eng.brq.redhat.com/rhel-8/nightly/ADVANCED-VIRT-8/latest-ADVANCED-VIRT-8.1.1-RHEL-8/compose/Advanced-virt/x86_64/os/"
+  qemu_install $VERSION_ID
+elif [ "$QEMU_VER" == "custom" ] && (($(bc <<< "$VERSION_ID == 8.2"))); then
+  custom_qemu_url="http://download.eng.pek2.redhat.com/rhel-8/rel-eng/ADVANCED-VIRT-8/latest-ADVANCED-VIRT-8.2.1-RHEL-8/compose/Advanced-virt/x86_64/os/"
+  qemu_install $VERSION_ID
+elif [ "$QEMU_VER" == "custom" ] && (($(bc <<< "$VERSION_ID == 8.3"))); then
+  custom_qemu_url="http://download-01.eng.brq.redhat.com/rhel-8/nightly/ADVANCED-VIRT-8/latest-ADVANCED-VIRT-8.3.1-RHEL-8/compose/Advanced-virt/x86_64/os/"
+  qemu_install $VERSION_ID
+elif [ "$QEMU_VER" == "custom" ] && (($(bc <<< "$VERSION_ID == 8.4"))); then
+  custom_qemu_url="http://download.eng.pek2.redhat.com/rhel-8/nightly/ADVANCED-VIRT-8/latest-ADVANCED-VIRT-8.4.0-RHEL-8/compose/Advanced-virt/x86_64/os/"
+  qemu_install $VERSION_ID
+# due to bz 1793327,1801542,18010081, will use fast tres to install qemu in rt kernel
 fi
 
 }
 
 qemu_install() {
-        yum install -y $QEMU_IMG_RHEV
-        yum install -y $QEMU_KVM_RHEV
-        yum install -y $QEMU_KVM_COMMON_RHEV
-        yum install -y $QEMU_KVM_TOOLS_RHEV
-        yum install -y $QEMU_KVM_RHEV
-        yum install -y qemu-kvm
+VERSION_ID=$1
+cat > /etc/yum.repos.d/latest-ADVANCED-VIRT.repo << _EOF
+[latest-ADVANCED-VIRT]
+name=latest-ADVANCED-VIRT
+baseurl=${custom_qemu_url}
+enabled=1
+gpgcheck=0
+skip_if_unavailable=1
+_EOF
+    yum -y module disable virt:rhel
+    if (($(bc <<< "$VERSION_ID == 8.4"))); then
+      yum module enable virt:av -y
+      yum module install virt:av/common -y
+      yum install libguestfs-tools
+    else
+      yum module enable virt:$VERSION_ID -y
+      yum module install virt:$VERSION_ID/common -y
+      yum install libguestfs-tools
+    fi
 }
 
 init_conf() {
@@ -402,11 +337,16 @@ init_conf() {
         host=$(cat $line |grep "BEAKER_PMD_NUM"|awk -F'=' '{print $2}')
         mask=$(/usr/bin/python2 ${CASE_PATH}/get_pmd.py --cmd host_pmd --nic "${NIC1}" --pmd "${host}")
         echo "VSWITCH_PMD_CPU_MASK = '$mask'" >> $line
-        # guest pmd 
+        # Get the number of CPUs required by all virtual machines
+        local firt=")]"
+        local last="[("
         queue=$(cat $line |grep "VSWITCH_DPDK_MULTI_QUEUES"|awk -F'=' '{print $2}')
-        cpu=$(($queue * 2 + 1))
-        guest=$(/usr/bin/python2 ${CASE_PATH}/get_pmd.py --cmd guest_pmd --nic "${NIC1}" --cpu $cpu)
-        echo "GUEST_CORE_BINDING = $guest" >> $line
+        cpu=$(($queue * 2 + 4))
+        guest_all_cpus=$(/usr/bin/python2 ${CASE_PATH}/get_pmd.py --cmd guest_pmd --nic "${NIC1}" --cpu $cpu)
+        guest_core_binding=$(echo $guest_all_cpus | awk -F " " '{print $1,$2,$3}' | sed 's/.$//')$firt
+        guest_thread_bonding=$last$(echo $guest_all_cpus | awk -F " " '{out=""; for(i=4;i<=NF;i++){out=out" "$i}; print out}')
+        echo "GUEST_CORE_BINDING = $guest_core_binding" >> $line
+        echo "GUEST_THREAD_BINDING = $guest_thread_bonding" >> $line
         #dpdk args
         args=$(/usr/bin/python2 ${CASE_PATH}/get_pmd.py --cmd dpdk_args --nic "${NIC1}")
         echo "VSWITCHD_DPDK_ARGS = $args" >> $line
@@ -420,10 +360,19 @@ init_conf() {
 	    sed -i "s/L3/L2/g" $line
         fi
    done
+#   NICNUMA=`cat "${CASE_PATH}"/nic_info.conf | grep "NICNUMA" | awk -F '=' '{print $2}'`
+#    if [ $NICNUMA == '"0"' ]; then
+#      GUEST_EMULATORPIN=('3' '5' '7' '9' '11' '13')
+#    else
+#      GUEST_EMULATORPIN=('2' '4' '6' '8' '10' '12')
+#    fi
+#   NICNUMA=`cat /sys/class/net/$NIC1/device/numa_node`
+
    spec_dpdk_args=$(/usr/bin/python2 ${CASE_PATH}/get_pmd.py --cmd spec_dpdk_args --nic "${NIC1}")
    echo "VSWITCHD_DPDK_ARGS = ${spec_dpdk_args}" >> ${CASE_PATH}/${CUSTOM_CONF}/10_custom_baseline_testpmd_as_switch.conf
    echo 'WHITELIST_NICS = ["'${NIC1_PCI_ADDR}'|vf1", "'${NIC2_PCI_ADDR}'|vf1"]' >> ${CASE_PATH}/${CUSTOM_CONF}/10_custom_baseline_guest_novlan.conf
    echo "BEAKER_NIC_DRIVER='${NIC_DRIVER}'" >> /root/vswitchperf/conf/11_beaker.conf
+#   echo "GUEST_EMULATORPIN=[("\'${GUEST_EMULATORPIN[0]}\'","\'${GUEST_EMULATORPIN[1]}\'","\'${GUEST_EMULATORPIN[2]}\'","\'${GUEST_EMULATORPIN[3]}\'")]" >> /root/vswitchperf/conf/11_beaker.conf
    echo "NIC1_MAC='${NIC1_MAC}'" >> /root/vswitchperf/conf/12_mac.conf
    echo "NIC2_MAC='${NIC2_MAC}'" >> /root/vswitchperf/conf/12_mac.conf
    echo "NIC1='${NIC1}'" >> /root/vswitchperf/conf/13_nic.conf
@@ -448,7 +397,7 @@ PATHS['dpdk'] = {
             'testpmd': os.path.join(RTE_TARGET, 'app', 'testpmd'),
         },
         'bin': {
-            'bind-tool': 'driverctl',
+            'bind-tool': '/usr/share/dpdk/usertools/dpdk-devbind.py',
             'modules' : ['vfio-pci'],
             'testpmd' : 'testpmd'
         }
@@ -456,30 +405,6 @@ PATHS['dpdk'] = {
 EOT
 done
 fi
-
-if [ $dpdk_version -ge 20 ];then
-ls "${conf_path}"/*.conf | while read line; do
-cat <<EOT >> $line
-PATHS['dpdk'] = {
-        'type' : 'bin',
-        'src': {
-            'path': '/usr/share/dpdk',
-            # To use vfio set:
-            'modules' : ['uio', 'vfio-pci'],
-            #'modules' : ['uio', os.path.join(RTE_TARGET, 'kmod/igb_uio.ko')],
-            'bind-tool': 'usertools/dpdk*bind.py',
-            'testpmd': os.path.join(RTE_TARGET, 'app', 'testpmd'),
-        },
-        'bin': {
-            'bind-tool': 'driverctl',
-            'modules' : ['vfio-pci'],
-            'testpmd' : 'dpdk-testpmd'
-        }
-    }
-EOT
-done
-fi
-
 ls "${conf_path}"/*.conf | while read line; do
     sed -i "s/rhel7.4/rhel${GUEST_IMG}/g" $line
 done

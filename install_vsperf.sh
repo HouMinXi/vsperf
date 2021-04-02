@@ -5,7 +5,7 @@ set -x
 echo "Starting $0"
 
 . /mnt/tests/kernel/networking/common/include.sh || exit 1
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 source ${CASE_PATH}/env.sh
 source ${CASE_PATH}/common.sh
 
@@ -34,6 +34,9 @@ if (($(bc <<< "$VERSION_ID >= 8"))); then
 fi	
 popd
 cp ${CASE_PATH}/beaker_ci_conf/qemu_dpdk_vhost_user.py /root/vswitchperf/vnfs/qemu/qemu_dpdk_vhost_user.py
+cp -f ${CASE_PATH}/beaker_ci_conf/tasks.py /root/vswitchperf/tools/tasks.py
+cp -f ${CASE_PATH}/beaker_ci_conf/testpmd_proc.py /root/vswitchperf/src/dpdk/testpmd_proc.py
+sed -i 's/src\/trex\/trex\/scripts\/automation\/trex_control_plane\/stl/src\/trex\/trex\/automation\/trex_control_plane\/stl/g' /root/vswitchperf/conf/03_traffic.conf
 #For 100g xena, xena should configure EnableFec as false
 if [ ${XENA_SPEED} != 10 ];then
 sed -i '/EnableFec/c\        "EnableFec": "false",' /root/vswitchperf/tools/pkt_gen/xena/profiles/baseconfig.x2544
@@ -127,7 +130,14 @@ sed -i 's/rh-python34/rh-python36/g' rhel/$OS_NAME/prepare_python_env.sh
 
 make_trex(){
 pushd /root/vswitchperf/src/trex/
-make
+#make
+#if [ $? -ne 0 ]; then
+wget http://netqe-bj.usersys.redhat.com/share/mhou/v2.41.tar.gz
+tar -zxvf v2.41.tar.gz
+mv v2.41 trex
+#else
+#  sleep 1
+#fi
 popd
 }
 
@@ -195,22 +205,31 @@ if (($(bc <<< "$VERSION_ID >= 8")));then
 ACTION=="add", SUBSYSTEM=="net", KERNELS=="0000:02:00.0", NAME:="eth0"
 ACTION=="add", SUBSYSTEM=="net", KERNELS=="0000:03:00.0", NAME:="eth1"
 EOF
-
+  if [ $VERSION_ID == '8.2' ]; then
+    LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-1Q-viommu.qcow2 /root/$udev_file_viommu /etc/udev/rules.d/
+    LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-2Q-viommu.qcow2 /root/$udev_file_viommu /etc/udev/rules.d/
+    LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-4Q-viommu.qcow2 /root/$udev_file_viommu /etc/udev/rules.d/
+  else
     virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-1Q-viommu.qcow2 /root/$udev_file_viommu /etc/udev/rules.d/
     virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-2Q-viommu.qcow2 /root/$udev_file_viommu /etc/udev/rules.d/
     virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-4Q-viommu.qcow2 /root/$udev_file_viommu /etc/udev/rules.d/
-
+  fi
     local udev_file_noviommu=60-persistent-net.rules
     touch $udev_file_noviommu
     cat > $udev_file_noviommu <<EOF
 ACTION=="add", SUBSYSTEM=="net", KERNELS=="0000:00:03.0", NAME:="eth0"
 ACTION=="add", SUBSYSTEM=="net", KERNELS=="0000:00:04.0", NAME:="eth1"
 EOF
-
+  if [ $VERSION_ID == '8.2' ]; then
+    LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-1Q-noviommu.qcow2 /root/$udev_file_noviommu /etc/udev/rules.d/
+    LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-2Q-noviommu.qcow2 /root/$udev_file_noviommu /etc/udev/rules.d/
+    LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-4Q-noviommu.qcow2 /root/$udev_file_noviommu /etc/udev/rules.d/
+  else
     virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-1Q-noviommu.qcow2 /root/$udev_file_noviommu /etc/udev/rules.d/
     virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-2Q-noviommu.qcow2 /root/$udev_file_noviommu /etc/udev/rules.d/
     virt-copy-in -a /root/vswitchperf/rhel${GUEST_IMG}-vsperf-4Q-noviommu.qcow2 /root/$udev_file_noviommu /etc/udev/rules.d/
     popd
+  fi
 fi
 }
 
@@ -311,12 +330,7 @@ fi
 
 
 install_driverctl() {
-if (($(bc <<< "$VERSION_ID >= 8"))); then
-	DRIVERCTL_URL="http://download-node-02.eng.bos.redhat.com/brewroot/packages/driverctl/0.95/4.el8/noarch/driverctl-0.95-4.el8.noarch.rpm"
-else
-	DRIVERCTL_URL="http://download-node-02.eng.bos.redhat.com/brewroot/packages/driverctl/0.95/1.el7fdp/noarch/driverctl-0.95-1.el7fdp.noarch.rpm"
-fi 
-yum install -y ${DRIVERCTL_URL}
+yum install -y http://download-node-02.eng.bos.redhat.com/brewroot/packages/driverctl/0.95/1.el7fdparch/noarch/driverctl-0.95-1.el7fdparch.noarch.rpm
 }
 
 change_to_driverctl(){
@@ -632,7 +646,11 @@ copy_guest_dpdk(){
     dir=`ls /root/vswitchperf/ | grep qcow2`
     for i in $dir
     do
-        virt-copy-in -a /root/vswitchperf/$i /root/guest_dpdk_rpms/dpdk*.rpm /root/dpdkrpms/
+      if [ $VERSION_ID == "8.2" ]; then
+        LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/$i /root/guest_dpdk_rpms/dpdk*.rpm /root/dpdkrpms/
+      else
+        LIBGUESTFS_MEMSIZE=2048 virt-copy-in -a /root/vswitchperf/$i /root/guest_dpdk_rpms/dpdk*.rpm /root/dpdkrpms/
+      fi
     done
 }
 
@@ -644,6 +662,7 @@ change_to_${OS_NAME_NEW}
 
 cp ${CASE_PATH}/beaker_ci_conf/prepare_python_env.sh /root/vswitchperf/systems/rhel/${OS_NAME}/prepare_python_env.sh
 rlRun "build_vsperf_without_upstream_builds"
+rlRun "make_trex"
 if [ ${image_method} == "download" ];then
 	rlRun "download_vnf_image"
 elif [ ${image_method} == "create" ];then
@@ -673,17 +692,12 @@ rlRun "modify_latency_test"
 rlRun "add_rte_version"
 rlRun "enable_ovs_debug"
 if [ ${TRAFFIC_GEN} == "xena" ];then
-        if [ ${NETSCOUT_CONNECT} == "yes" ];then
-		rlRun "configure_xena"
-	fi
 	rlRun "download_Xena2544"
+	rlRun "configure_xena"
 	rlRun "change_xena"
 elif [ ${TRAFFIC_GEN} == "trex" ];then
-	if [ ${NETSCOUT_CONNECT} == "yes" ];then
-		rlRun "configure_trex"
-	fi
+	rlRun "configure_trex"
 	rlRun "configure_ssh_trex"
-	rlRun "make_trex"
 fi
 rlRun "copy_ovsvanilla_openvswitch"
 rlRun "copy_module_manager"

@@ -1,6 +1,6 @@
 #!/bin/bash
 . /mnt/tests/kernel/networking/common/include.sh || exit 1
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 source ${CASE_PATH}/env.sh
 source ${CASE_PATH}/nic_info.conf
 . /etc/os-release
@@ -98,11 +98,14 @@ identify_isolcpus() {
 NICNUMA=`cat /sys/class/net/$NIC1/device/numa_node`
 ISOLCPUS=`lscpu | grep "NUMA node$NICNUMA" | awk '{print $4}'`
 
-if [ `echo $ISOLCPUS | awk /'^0,'/` ]
-    then
+if [ `echo $ISOLCPUS | awk /'^0,'/` ]; then
+# NUMA node0 CPU(s):   0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46
     ISOLCPUS=`echo $ISOLCPUS | cut -c 3-`
+# NUMA node0 CPU(s):   0-19
+elif [ `echo $ISOLCPUS | awk /'^0-'/` ]; then
+    ISOLCPUS=`echo $ISOLCPUS | awk '{sub(/^0/,"1"); print $1}'`
+#echo "ISOLCPUS  = $ISOLCPUS"
 fi
-echo "ISOLCPUS  = $ISOLCPUS"
 
 result_pass
 
@@ -115,9 +118,9 @@ OS_NAME="$VERSION_ID"
 if (($(bc <<< "$VERSION_ID < 8"))); then
 sed -i 's/\(GRUB_CMDLINE_LINUX.*\)"$/\1/g' /etc/default/grub
 if [ ${NIC_DRIVER} == "qede" ];then
-sed -i "s/GRUB_CMDLINE_LINUX.*/& nohz=on default_hugepagesz=1G hugepagesz=1G hugepages=${hugepage_num} intel_iommu=on iommu=pt modprobe.blacklist=qedi modprobe.blacklist=qedf modprobe.blacklist=qedr \"/g" /etc/default/grub
+sed -i "s/GRUB_CMDLINE_LINUX.*/& nohz=on mitigations=off default_hugepagesz=1G hugepagesz=1G hugepages=${hugepage_num} intel_iommu=on iommu=pt modprobe.blacklist=qedi modprobe.blacklist=qedf modprobe.blacklist=qedr \"/g" /etc/default/grub
 else
-sed -i "s/GRUB_CMDLINE_LINUX.*/& nohz=on default_hugepagesz=1G hugepagesz=1G hugepages=${hugepage_num} intel_iommu=on iommu=pt \"/g" /etc/default/grub
+sed -i "s/GRUB_CMDLINE_LINUX.*/& nohz=on mitigations=off default_hugepagesz=1G hugepagesz=1G hugepages=${hugepage_num} intel_iommu=on iommu=pt \"/g" /etc/default/grub
 fi
 if [ `hostname | grep -P hpe-netqe-syn480g10-0[0-9]+.knqe.lab.eng.bos.redhat.com` ];then
         grub2-mkconfig -o /boot/efi/EFI/redhat/grub.cfg
@@ -144,8 +147,11 @@ else
 fi
 fi
 echo -e "isolated_cores=$ISOLCPUS" >> /etc/tuned/cpu-partitioning-variables.conf
+echo -e "isolate_managed_irq=Y" >> /etc/tuned/cpu-partitioning-variables.conf
 tuned-adm profile cpu-partitioning
-
+systemctl stop irqbalance.service
+chkconfig irqbalance off
+/usr/sbin/swapoff -a
 result_pass
 
 }

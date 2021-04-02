@@ -1,4 +1,4 @@
-source /mnt/tests/kernel/networking/vsperf/vsperf_CI/env.sh
+source /mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI/env.sh
 if [ "$QCOW_LOC" == "China" ]
     then
     SERVER="netqe-bj.usersys.redhat.com/share/tools"

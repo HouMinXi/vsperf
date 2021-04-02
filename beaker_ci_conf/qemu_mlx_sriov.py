@@ -85,6 +85,8 @@ class IVnfQemu(IVnf):
         vnc = ':%d' % self._number
         # don't use taskset to affinize main qemu process; It causes hangup
         # of 2nd VM in case of DPDK. It also slows down VM responsivnes.
+        # cpumask = ",".join(S.getValue('GUEST_CORE_BINDING')[self._number])
+        #cpumask = ",".join(S.getValue('GUEST_EMULATORPIN')[self._number])
         cpumask = ",".join(S.getValue('GUEST_CORE_BINDING')[self._number])
         self._cmd = ['sudo', '-E', 'taskset', '-c', cpumask,
                      S.getValue('TOOLS')['qemu-system'],
@@ -100,7 +102,7 @@ class IVnfQemu(IVnf):
                      'memory-backend-file,id=mem,size=' +
                      str(S.getValue('GUEST_MEMORY')[self._number]) + 'M,' +
                      'mem-path=' + S.getValue('HUGEPAGE_DIR') + ',share=on',
-                     '-numa', 'node,memdev=mem -mem-prealloc',
+                     '-numa', 'node,memdev=mem',
                      '-nographic', '-vnc', str(vnc), '-name', name,
                      '-snapshot', '-net none', '-no-reboot',
                      '-M q35,kernel-irqchip=split -device intel-iommu,device-iotlb=on,intremap,caching-mode=true',
@@ -237,12 +239,13 @@ class IVnfQemu(IVnf):
 
         for cpu in range(0, int(S.getValue('GUEST_SMP')[self._number])):
             match = None
+            guest_thread_binding = S.getValue('GUEST_THREAD_BINDING')[self._number]
+            if guest_thread_binding is None:
+                guest_thread_binding = S.getValue('GUEST_CORE_BINDING')[self._number]
             for line in output.decode(cur_locale).split('\n'):
                 match = re.search(thread_id % cpu, line)
                 if match:
-                    self._affinitize_pid(
-                        S.getValue('GUEST_CORE_BINDING')[self._number][cpu],
-                        match.group(1))
+                    self._affinitize_pid(guest_thread_binding[cpu], match.group(1))
                     break
 
             if not match:

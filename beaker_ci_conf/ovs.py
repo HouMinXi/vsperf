@@ -81,9 +81,9 @@ class IVSwitchOvs(IVSwitch, tasks.Process):
         self.configure()
 
         try:
-            #tasks.Process.start(self)
-            import os
-            os.system("sudo -E /usr/sbin/ovs-vswitchd --pidfile=/var/run/openvswitch/ovs-vswitchd.pid --overwrite-pidfile --log-file=/tmp/vswitchd.log &")
+            tasks.Process.start(self)
+            #import os
+            #os.system("sudo -E /usr/sbin/ovs-vswitchd --pidfile=/var/run/openvswitch/ovs-vswitchd.pid --overwrite-pidfile --log-file=/tmp/vswitchd.log &")
             self.relinquish()
         except (pexpect.EOF, pexpect.TIMEOUT) as exc:
             logging.error("Exception during VSwitch start.")

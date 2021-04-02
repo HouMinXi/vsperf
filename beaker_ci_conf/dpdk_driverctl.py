@@ -179,7 +179,6 @@ def _unbind_nics():
         _LOGGER.error('Unable to unbind NICs %s', str(_NICS_PCI))
     # Rebind NICs to their original drivers
     # using the Intel DPDK ``dpdk*bind.py`` tool.
-"""
     for nic in _NICS:
         try:
             if nic['driver']:
@@ -191,7 +190,7 @@ def _unbind_nics():
         except subprocess.CalledProcessError:
             _LOGGER.error('Unable to bind NIC %s to driver %s',
                           nic['pci'], nic['driver'])
-"""
+
 class Dpdk(object):
     """A context manager for the system init/cleanup.
     """

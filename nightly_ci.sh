@@ -2,7 +2,7 @@
 # Include Beaker environment
 . /mnt/tests/kernel/networking/common/include.sh || exit 1
 
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 VSPERF_CMD="/root/vswitchperf/vsperf"
 source ${CASE_PATH}/env.sh
 source ${CASE_PATH}/common.sh
@@ -37,7 +37,7 @@ run_pvp_tput_sriov(){
 	for i in 64 1500
 	do
 	pushd /root/vswitchperf/
-	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_baseline_guest_${1}.conf --vswitch=none --vnf QemuPciPassthrough --test-params "TRAFFICGEN_DURATION=60;TRAFFICGEN_LOSSRATE=0.00;TRAFFICGEN_PKT_SIZES=(${i},);TRAFFICGEN_RFC2544_TESTS=1"
+	${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_baseline_guest_${1}.conf --vswitch=none --vnf QemuPciPassthrough --test-params "TRAFFICGEN_DURATION=600;TRAFFICGEN_LOSSRATE=0.00;TRAFFICGEN_PKT_SIZES=(${i},);TRAFFICGEN_RFC2544_TESTS=1"
 	popd
 	move_result "nightly_baseline_guest_pvp_tput_${i}_0.00_${TRAFFIC_GEN}"
 	done
@@ -51,7 +51,7 @@ run_pvp_tput_1q_2pmd(){
                 \cp ${CASE_PATH}/beaker_ci_conf/qemu_dpdk_vhost_user_viommu.py /root/vswitchperf/vnfs/qemu/qemu_dpdk_vhost_user.py
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.00; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_2pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=600; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.00; TRAFFICGEN_RFC2544_TESTS=1"
         popd
 	move_result "nightly_1-Queue_${i}_0.00_UseCase-1A_2pmd_testpmd_${TRAFFIC_GEN}"
 	pushd /root/vswitchperf/
@@ -66,7 +66,7 @@ run_pvp_tput_1q_4pmd(){
                 \cp ${CASE_PATH}/beaker_ci_conf/qemu_dpdk_vhost_user_viommu.py /root/vswitchperf/vnfs/qemu/qemu_dpdk_vhost_user.py
         fi
         pushd /root/vswitchperf/
-        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=60; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.00; TRAFFICGEN_RFC2544_TESTS=1"
+        ${VSPERF_CMD} pvp_tput --conf-file $CASE_PATH/${CUSTOM_CONF}/10_custom_dpdk_1q_testpmd_4pmd_${1}.conf --test-params "TRAFFICGEN_DURATION=600; TRAFFICGEN_PKT_SIZES=(${i},); TRAFFICGEN_LOSSRATE=0.00; TRAFFICGEN_RFC2544_TESTS=1"
         popd
         move_result "nightly_1-Queue_${i}_0.00_UseCase-1A_4pmd_testpmd_${TRAFFIC_GEN}"
 	pushd /root/vswitchperf/

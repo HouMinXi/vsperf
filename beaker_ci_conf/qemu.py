@@ -85,14 +85,40 @@ class IVnfQemu(IVnf):
         vnc = ':%d' % self._number
         # don't use taskset to affinize main qemu process; It causes hangup
         # of 2nd VM in case of DPDK. It also slows down VM responsivnes.
+        #cpumask = ",".join(S.getValue('GUEST_EMULATORPIN')[self._number])
         cpumask = ",".join(S.getValue('GUEST_CORE_BINDING')[self._number])
+        # self._cmd = ['sudo', '-E', 'taskset', '-c', cpumask,
+        #              S.getValue('TOOLS')['qemu-system'],
+        #              '-m', S.getValue('GUEST_MEMORY')[self._number],
+        #              '-machine q35',
+        #              '-smp %s,sockets=%s,cores=1,threads=1' %(str(S.getValue('GUEST_SMP')[self._number]),str(S.getValue('GUEST_SMP')[self._number])),
+        #              '-cpu', 'host,migratable=off',
+        #              '-drive', 'if={},file='.format(S.getValue(
+        #                  'GUEST_BOOT_DRIVE_TYPE')[self._number]) +
+        #              S.getValue('GUEST_IMAGE')[self._number],
+        #              '-boot', 'c', '--enable-kvm',
+        #              '-monitor', 'unix:%s,server,nowait' % self._monitor,
+        #              '-object',
+        #              'memory-backend-file,id=mem,size=' +
+        #              str(S.getValue('GUEST_MEMORY')[self._number]) + 'M,' +
+        #              'mem-path=' + S.getValue('HUGEPAGE_DIR') + ',share=on,prealloc=yes,host-nodes=0,policy=bind',
+        #              # due bug 1624223, delete -mem-prealloc
+        #              '-numa', 'node,cpus=0-%s,nodeid=0,memdev=mem' %str(int(S.getValue('GUEST_SMP')[self._number])-1),
+        #              '-nographic', '-vnc', str(vnc), '-name', name,
+        #              '-snapshot', '-net none', '-no-reboot',
+        #              #'-drive',
+        #              #'if=%s,format=raw,file=fat:rw:%s,snapshot=off' %
+        #              #(S.getValue('GUEST_SHARED_DRIVE_TYPE')[self._number],
+        #              # S.getValue('GUEST_SHARE_DIR')[self._number]),
+        #             ]
         self._cmd = ['sudo', '-E', 'taskset', '-c', cpumask,
                      S.getValue('TOOLS')['qemu-system'],
                      '-m', S.getValue('GUEST_MEMORY')[self._number],
-                     '-smp %s,sockets=%s,cores=1,threads=1' %(str(S.getValue('GUEST_SMP')[self._number]),str(S.getValue('GUEST_SMP')[self._number])),        
+                     '-smp %s,sockets=%s,cores=1,threads=1' % (
+                     str(S.getValue('GUEST_SMP')[self._number]), str(S.getValue('GUEST_SMP')[self._number])),
                      '-cpu', 'host,migratable=off',
                      '-drive', 'if={},file='.format(S.getValue(
-                         'GUEST_BOOT_DRIVE_TYPE')[self._number]) +
+                'GUEST_BOOT_DRIVE_TYPE')[self._number]) +
                      S.getValue('GUEST_IMAGE')[self._number],
                      '-boot', 'c', '--enable-kvm',
                      '-monitor', 'unix:%s,server,nowait' % self._monitor,
@@ -103,11 +129,11 @@ class IVnfQemu(IVnf):
                      '-numa', 'node,memdev=mem -mem-prealloc',
                      '-nographic', '-vnc', str(vnc), '-name', name,
                      '-snapshot', '-net none', '-no-reboot',
-                     #'-drive',
-                     #'if=%s,format=raw,file=fat:rw:%s,snapshot=off' %
-                     #(S.getValue('GUEST_SHARED_DRIVE_TYPE')[self._number],
+                     # '-drive',
+                     # 'if=%s,format=raw,file=fat:rw:%s,snapshot=off' %
+                     # (S.getValue('GUEST_SHARED_DRIVE_TYPE')[self._number],
                      # S.getValue('GUEST_SHARE_DIR')[self._number]),
-                    ]
+                     ]
         self._configure_logging()
 
     def _configure_logging(self):
@@ -193,7 +219,7 @@ class IVnfQemu(IVnf):
 
         self._expect_process(S.getValue('GUEST_PROMPT')[self._number], timeout=5)
 
-    def send_and_pass(self, cmd, timeout=30):
+    def send_and_pass(self, cmd, timeout=60):
         """
         Send ``cmd`` and wait ``timeout`` seconds for it to pass.
 
@@ -235,12 +261,13 @@ class IVnfQemu(IVnf):
 
         for cpu in range(0, int(S.getValue('GUEST_SMP')[self._number])):
             match = None
+            guest_thread_binding = S.getValue('GUEST_THREAD_BINDING')[self._number]
+            if guest_thread_binding is None:
+                guest_thread_binding = S.getValue('GUEST_CORE_BINDING')[self._number]
             for line in output.decode(cur_locale).split('\n'):
                 match = re.search(thread_id % cpu, line)
                 if match:
-                    self._affinitize_pid(
-                        S.getValue('GUEST_CORE_BINDING')[self._number][cpu],
-                        match.group(1))
+                    self._affinitize_pid(guest_thread_binding[cpu], match.group(1))
                     break
 
             if not match:
@@ -291,12 +318,12 @@ class IVnfQemu(IVnf):
             self._logger.error('Unsupported guest loopback method "%s" was specified. Option'
                                ' "buildin" will be used as a fallback.', self._guest_loopback)
 
-    def wait(self, prompt=None, timeout=30):
+    def wait(self, prompt=None, timeout=60):
         if prompt is None:
             prompt = S.getValue('GUEST_PROMPT')[self._number]
         super(IVnfQemu, self).wait(prompt=prompt, timeout=timeout)
 
-    def execute_and_wait(self, cmd, timeout=30, prompt=None):
+    def execute_and_wait(self, cmd, timeout=60, prompt=None):
         if prompt is None:
             prompt = S.getValue('GUEST_PROMPT')[self._number]
         super(IVnfQemu, self).execute_and_wait(cmd, timeout=timeout,
@@ -376,7 +403,7 @@ class IVnfQemu(IVnf):
         '''
         #self.execute_and_wait('tuned-adm profile cpu-partitioning')
         #self.execute_and_wait('cat /var/log/tuned/tuned.log')
-        self.execute_and_wait('cat /proc/meminfo')
+        self.execute_and_wait('cat /proc/meminfo | grep -i huge')
         self.execute_and_wait('rpm -ivh /root/dpdkrpms/dpdk*.rpm')
         #self.execute_and_wait('tuna -Q')
         self.execute_and_wait('cat /proc/cmdline')
@@ -428,7 +455,7 @@ class IVnfQemu(IVnf):
         self.execute_and_wait('cd /usr/bin')
         self.execute_and_wait('./testpmd {}'.format(testpmd_params), 60, "Done")
         self.execute('set fwd ' + self._testpmd_fwd_mode, 1)
-        self.execute_and_wait('start', 20, 'testpmd>')
+        self.execute_and_wait('start', 60, 'testpmd>')
 
     def _configure_l2fwd(self):
         """

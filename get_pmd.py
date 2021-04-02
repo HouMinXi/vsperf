@@ -51,7 +51,57 @@ SOCKET = 2
 def run_shell(cmd):
     return Popen([cmd], shell=True, stdout=PIPE, stderr=PIPE).communicate()[0]
 
-def get_core_map():
+# read cpu info from /proc/cpuinfo, core_map structure like {(physical id,core id): [processor1, processor2].....}
+"""
+# python3 /usr/share/dpdk/usertools/cpu_layout.py
+======================================================================
+Core and Socket Information (as reported by '/sys/devices/system/cpu')
+======================================================================
+
+cores =  [16, 2, 9, 4, 3, 20, 11, 17, 19, 18, 24, 27]
+sockets =  [0, 1]
+
+        Socket 0        Socket 1       
+        --------        --------       
+Core 16 [0, 16]         [11, 27]       
+Core 2  [4, 20]         [1, 17]        
+Core 9  [2, 18]         [9, 25]        
+Core 4                  [3, 19]        
+Core 3                  [5, 21]        
+Core 20 [6, 22]                        
+Core 11                 [7, 23]        
+Core 17 [8, 24]                        
+Core 19 [10, 26]                       
+Core 18 [12, 28]                       
+Core 24                 [13, 29]       
+Core 27 [14, 30]        [15, 31] 
+
+# python3 /usr/share/dpdk/usertools/cpu_layout.py
+======================================================================
+Core and Socket Information (as reported by '/sys/devices/system/cpu')
+======================================================================
+
+cores =  [0, 5, 1, 4, 2, 3, 8, 13, 9, 12, 10, 11]
+sockets =  [0, 1]
+
+        Socket 0        Socket 1       
+        --------        --------       
+Core 0  [0, 24]         [1, 25]        
+Core 5  [2, 26]         [3, 27]        
+Core 1  [4, 28]         [5, 29]        
+Core 4  [6, 30]         [7, 31]        
+Core 2  [8, 32]         [9, 33]        
+Core 3  [10, 34]        [11, 35]       
+Core 8  [12, 36]        [13, 37]       
+Core 13 [14, 38]        [15, 39]       
+Core 9  [16, 40]        [17, 41]       
+Core 12 [18, 42]        [19, 43]       
+Core 10 [20, 44]        [21, 45]       
+Core 11 [22, 46]        [23, 47] 
+"""
+
+
+def get_core_map(numa_id):
     sockets = []
     cores = []
     core_map = {}
@@ -63,33 +113,34 @@ def get_core_map():
     core_details = []
     core_lines = {}
     for line in lines:
+        # Delete space line
         if len(line.strip()) != 0:
             name, value = line.split(":", 1)
+            # get all information from /proc/cpuinfo and set a ket/value
             core_lines[name.strip()] = value.strip()
         else:
             core_details.append(core_lines)
             core_lines = {}
 
     for core in core_details:
+        # physical id == socket, core id == core, processor == processor
         for field in ["processor", "core id", "physical id"]:
             if field not in core:
                 print "Error getting '%s' value from /proc/cpuinfo" % field
                 sys.exit(1)
             core[field] = int(core[field])
-
-        if core["core id"] not in cores:
-            cores.append(core["core id"])
-        if core["physical id"] not in sockets:
-            sockets.append(core["physical id"])
-        key = (core["physical id"], core["core id"])
-        if key not in core_map:
-            core_map[key] = []
-        core_map[key].append(core["processor"])
+        if core["physical id"] == numa_id:
+            if core["core id"] not in cores:
+                cores.append(core["core id"])
+            if core["physical id"] not in sockets:
+                sockets.append(core["physical id"])
+            key = (core["physical id"], core["core id"])
+            if key not in core_map:
+                core_map[key] = []
+            # (Socket num, core num): [processor1, processor2]
+            core_map[key].append(core["processor"])
 
     return core_map, cores
-
-def cpus():
-    return len(data) * 2
 
 def get_cores(data):
     sort_core = [] 
@@ -97,6 +148,7 @@ def get_cores(data):
         sort_core.append(k[1])
     sort_core = list(set(sort_core))
     sort_core.reverse()
+    # Sort core num in descending order
     return sort_core
 
 def pmdMask(core_map, pmd_num, socket):
@@ -111,8 +163,8 @@ def pmdMask(core_map, pmd_num, socket):
     return rlt 
 
 def host_pmd():
-    data, _ = get_core_map()
     socket = numa(nic)
+    data, _ = get_core_map(socket)
     r = 0
     for i in pmdMask(data, pmd_num, socket):
         r += 2 ** i
@@ -138,13 +190,29 @@ def guest_pmd():
     rlt = []
     global nic, cpu_num
     var_numa = numa(nic)
-    data, cores = get_core_map()
-    
+    data, cores = get_core_map(var_numa)
+    # usually socket0 and socket 1 the first procress use to housekeeping
+    # python3 /usr/share/dpdk/usertools/cpu_layout.py
+#     == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == ==
+#     Core and Socket
+#     Information(as reported
+#     by
+#     '/sys/devices/system/cpu')
+#     == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == ==
+#
+#     cores = [0, 5, 1, 4, 2, 3, 8, 13, 9, 12, 10, 11]
+#     sockets = [0, 1]
+#
+#     Socket 0          Socket1
+#     --------        --------
+# Core  0[0, 24]        [1, 25]
+
     for i in range(len(cores)):
         if i == 0:
-            continue
-        elif i == 1:
-            rlt.append(str(data[(var_numa, cores[i])][0]))
+            # continue
+            rlt.append(str(data[(var_numa, cores[i])][1]))
+        # elif i == 1:
+        #     rlt.append(str(data[(var_numa, cores[i])][0]))
         else:
             for tmp in data[(var_numa, cores[i])]:
                 rlt.append(str(tmp))
@@ -157,25 +225,25 @@ def dpdk_config():
     rlt = {'dpdk-init' : 'true','dpdk-lcore-mask' : '',}
     global nic
     var_numa = numa(nic)
-    data, cores = get_core_map()
+    data, cores = get_core_map(var_numa)
     hex_mask = data[(var_numa, cores[0])][0]
     rlt['dpdk-lcore-mask'] = str(hex(2 ** hex_mask))
     return rlt
 
 def dpdk_args():
-    rlt = ['-c', '', '-n', '4', '--socket-mem 1024,1024']
+    rlt = ['-c', '', '-n', '4', '--socket-mem 4096,4096']
     global nic
     var_numa = numa(nic)
-    data, cores = get_core_map()
+    data, cores = get_core_map(var_numa)
     hex_mask = data[(var_numa, cores[0])][0]
     rlt[1] = str(hex(2 ** hex_mask))
     return rlt
 
 def spec_dpdk_args():
-    rlt = ['-l', '', '-n', '4', '--socket-mem 1024,1024']
+    rlt = ['-l', '', '-n', '4', '--socket-mem 4096,4096']
     global nic
     var_numa = numa(nic)
-    data, cores = get_core_map()
+    data, cores = get_core_map(var_numa)
     length = len(cores)
     tmp = []
     for i in range(length - 3, length):
@@ -185,8 +253,8 @@ def spec_dpdk_args():
 
 def last_cpu():
     global nic, cpu_num
-    data, _ = get_core_map()
     socket = numa(nic)
+    data, _ = get_core_map(socket)
     return pmdMask(data, cpu_num, socket)
 
 if cmd == 'host_pmd':

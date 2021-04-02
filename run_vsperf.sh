@@ -1,10 +1,11 @@
 #!/bin/bash
 # Include Beaker environment
 . /mnt/tests/kernel/networking/common/include.sh || exit 1
-CASE_PATH="/mnt/tests/kernel/networking/vsperf/vsperf_CI"
+CASE_PATH="/mnt/tests/kernel/networking/rt-kernel/vsperf/vsperf_CI"
 source ${CASE_PATH}/env.sh
 source ${CASE_PATH}/common.sh
-source ${CASE_PATH}/nic_info.conf
+# nic_info come from /networking/common/include.sh
+# source ${CASE_PATH}/nic_info.conf
 
 PACKAGE="kernel"
 VSPERF="/root/vswitchperf/vsperf"
